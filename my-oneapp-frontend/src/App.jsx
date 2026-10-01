@@ -274,6 +274,36 @@ main > * + * { margin-top: 15px; }
 .face.plain .icon { stroke: var(--green); }
 .pin-notice { margin: 14px 14px 0; padding: 9px 14px; }
 .pin-err { margin: 16px 24px 0; text-align: center; color: #ff6b7a; font-size: 13px; }
+
+/* Entertainment + Do more + assistant */
+.panel.ent { padding: 15px 12px 20px; }
+.panel.ent h2 { margin-bottom: 14px; }
+.ent-items { display: flex; gap: 21px; overflow-x: auto; scrollbar-width: none; }
+.ent-items::-webkit-scrollbar { display: none; }
+.ent-item { display: flex; flex-direction: column; align-items: center; gap: 9px; flex: none; font-size: 13px; color: #ddd; }
+.ent-ic { width: 43px; height: 43px; border-radius: 12px; display: grid; place-items: center; overflow: hidden; }
+.emo { font-size: 24px; line-height: 1; }
+.baze { padding: 2px 6px; border-radius: 9px; background: linear-gradient(90deg, #ff4f7b, #ff9a3c 55%, #5b8cff); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0; }
+.skiza { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle, #2fb44a 55%, #7ed957 100%); color: #ffe23a; font-size: 10px; font-weight: 800; text-shadow: 0 1px 0 #0b5a22; letter-spacing: 0; }
+.vyb { padding: 5px 4px; border-radius: 5px; background: #1f9d49; color: #fff; font-size: 8px; font-weight: 800; letter-spacing: 0; }
+.dm { margin-top: 12px; padding: 15px 14px 14px; }
+.dm-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.dm-head h2 { font-size: 14px; }
+.dm-sub { margin-top: 5px; font-size: 13px; color: #ddd; }
+.dm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 26px; }
+.dm-card { position: relative; height: 87px; padding: 12px 8px 0 11px; border-radius: 12px; background: #323232; display: grid; grid-template-columns: 20px 1fr; column-gap: 8px; align-content: start; text-align: left; font-size: 14.5px; font-weight: 500; line-height: 18px; }
+.dm-card:active { background: #3a3a3a; }
+.dm-card .emo { font-size: 20px; margin-top: 2px; }
+.dm-logos { position: absolute; left: 40px; bottom: 14px; display: flex; }
+.dm-logo { width: 22px; height: 22px; margin-left: -7px; border-radius: 50%; display: grid; place-items: center; font-size: 5.5px; font-weight: 800; letter-spacing: 0; box-shadow: 0 0 0 1px rgba(0,0,0,.35); overflow: hidden; }
+.dm-logo:first-child { margin-left: 0; }
+.dm-help { margin: 24px 0 10px; text-align: center; font-size: 14px; }
+.dm-browse { display: block; width: 100%; height: 43px; border-radius: 10px; background: #2fa040; color: #fff; font-size: 15px; font-weight: 600; }
+.assist { position: fixed; right: max(14px, calc(50% - 256px)); bottom: 94px; z-index: 15; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 18px 4px 4px 18px; background: #2c2c2c; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.assist svg { display: block; border-radius: 50%; }
+.fab .fab-t { white-space: nowrap; }
+.fab.compact { width: 47px; padding: 0; justify-content: center; gap: 0; }
+.fab.compact .fab-t { display: none; }
 `;
 
 /* ---------- Icons: green line + red accent (.acc), 24px grid ---------- */
@@ -894,7 +924,7 @@ const saveSession = (phone) => {
 };
 
 /* ---------- API ---------- */
-const API_URL = import.meta.env.VITE_API_URL || 'https://my-one-app-backend.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 async function api(path, { method = 'GET', body, token } = {}) {
   let res;
   try {
@@ -999,6 +1029,96 @@ function Login({ initial, onClose, onProceed }) {
   );
 }
 
+/* ---------- Entertainment, Do more, assistant ---------- */
+const ENTERTAINMENT = [
+  { id: 'baze', label: 'Baze', bg: '#fde9ee', node: <b className="baze">Baze</b> },
+  { id: 'games', label: 'Games', bg: '#fde7da', node: <span className="emo">🎮</span> },
+  { id: 'news', label: 'Newspaper', bg: '#fdebd9', node: <span className="emo">📰</span> },
+  { id: 'skiza', label: 'Skiza', bg: '#e2f6e8', node: <b className="skiza">Skiza</b> },
+  { id: 'vyb', label: 'VybCall', bg: '#e2f6e8', node: <b className="vyb">VybCall</b> },
+];
+
+// logos are [background, text colour, short text] placeholders: swap in real brand images if you have them
+const DO_MORE = [
+  { id: 'fin', title: 'Financial Services', emoji: '💰', logos: [['#161616', '#3bd06a', 'ZT'], ['#fff', '#178a37', 'ZiiDi'], ['#2fa84a', '#fff', 'TM'], ['#fff', '#e52d45', 'swoosh']] },
+  { id: 'ins', title: 'Insure and Protect', emoji: '🛡️', logos: [['#fff', '#1a7a3c', 'SHA'], ['#111', '#e44', 'PRU'], ['#2fa84a', '#fff', 'TM'], ['#fff', '#222', '☺']] },
+  { id: 'evt', title: 'Events & Tickets', emoji: '🎫', logos: [['#f5c400', '#111', 'TIX'], ['#e91e63', '#fff', 'MLP'], ['#fff', '#7b1fa2', 'GO'], ['#fff', '#d32f2f', 'TAAM']] },
+  { id: 'util', title: 'Pay for Utilities', emoji: '🧾', logos: [['#0c1a3a', '#7fb2ff', 'KP'], ['#fff', '#333', 'nes'], ['#1b6fa8', '#fff', '💧']] },
+  { id: 'bet', title: 'Betting', emoji: '🎮', logos: [['#1a2a6c', '#fff', 'Sp'], ['#ffe600', '#111', 'BET'], ['#111', '#ffb300', 'LOT'], ['#2fb44a', '#fff', 'odi']] },
+  { id: 'trv', title: 'Book & Travel', emoji: '🚌', logos: [['#e53935', '#fff', 'K'], ['#111', '#ffc107', 'Y'], ['#e91e63', '#fff', 'MLP'], ['#e53935', '#fff', 'V']] },
+  { id: 'shop', title: 'Shop & Gift', emoji: '🎁', logos: [['#161616', '#3bd06a', 'MA'], ['#111', '#fff', 'SV'], ['#6a2c91', '#fff', 'U'], ['#f26a1b', '#fff', 'U']] },
+  { id: 'biz', title: 'Safaricom Business', emoji: '📊', logos: [['#fff', '#178a37', 'S'], ['#0e3b1d', '#3bd06a', '⌁'], ['#0e3b1d', '#3bd06a', '◎'], ['#12301f', '#3bd06a', '⚙']] },
+];
+
+function Entertainment({ onAction }) {
+  return (
+    <section className="panel ent" aria-labelledby="ent">
+      <h2 id="ent">Entertainment</h2>
+      <div className="ent-items">
+        {ENTERTAINMENT.map((e) => (
+          <button key={e.id} className="ent-item" onClick={() => onAction(e.label)}>
+            <span className="ent-ic" style={{ background: e.bg }}>{e.node}</span>
+            {e.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DoMore({ onAction }) {
+  return (
+    <section className="panel dm" aria-labelledby="dm">
+      <div className="dm-head">
+        <div>
+          <h2 id="dm">Do more with M-PESA</h2>
+          <p className="dm-sub">Pay, book, learn, and earn in one place.</p>
+        </div>
+        <button aria-label="Search services" onClick={() => onAction('Search services')}><Icon name="searchDuo" size={26} strokeWidth={1.7} /></button>
+      </div>
+      <div className="dm-grid">
+        {DO_MORE.map((c) => (
+          <button key={c.id} className="dm-card" onClick={() => onAction(c.title)}>
+            <span className="emo" aria-hidden="true">{c.emoji}</span>
+            <span>{c.title}</span>
+            <span className="dm-logos" aria-hidden="true">
+              {c.logos.map(([bg, fg, t], i) => (
+                <span key={i} className="dm-logo" style={{ background: bg, color: fg, zIndex: i }}>
+                  {t === 'swoosh' ? <Icon name="swoosh" size={16} /> : t}
+                </span>
+              ))}
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="dm-help">Can't find what you're looking for?</p>
+      <button className="dm-browse" onClick={() => onAction('All services')}>Browse all services</button>
+    </section>
+  );
+}
+
+function Assistant({ onClick }) {
+  return (
+    <button className="assist" aria-label="Virtual assistant" onClick={onClick}>
+      <svg viewBox="0 0 64 64" width="42" height="42" aria-hidden="true">
+        <circle cx="32" cy="32" r="32" fill="#dde8f2" />
+        <path d="M17 31c0-12 6-19 15-19s15 7 15 19c0 9-2 17-3 20H20c-1-3-3-11-3-20Z" fill="#241713" />
+        <path d="M8 64c1-10 8-15 17-17h14c9 2 16 7 17 17Z" fill="#f4f7fb" />
+        <path d="M27 42h10v7c-2 2-8 2-10 0Z" fill="#c98f6b" />
+        <ellipse cx="32" cy="30" rx="10.5" ry="12.5" fill="#d9a07c" />
+        <path d="M21.5 28c1-8 6-12 11-12s9 4 10 11c-3-3-6-5-10-5s-8 2-11 6Z" fill="#241713" />
+        <circle cx="28" cy="31" r="1.1" fill="#2b1b14" />
+        <circle cx="36" cy="31" r="1.1" fill="#2b1b14" />
+        <path d="M28.5 36c2 2.2 5 2.2 7 0" stroke="#8a3b2e" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+        <g transform="rotate(-18 14 50)">
+          <rect x="9" y="42" width="7" height="14" rx="3.5" fill="#d9a07c" />
+          <path d="M9 45l-2-4M12 43l-1-5M15 43l1-5" stroke="#d9a07c" strokeWidth="2.4" strokeLinecap="round" />
+        </g>
+      </svg>
+    </button>
+  );
+}
+
 export default function App() {
   const [toast, notify] = useToast();
   const [loginPhone, setLoginPhone] = useState(() => loadSession() ?? '');
@@ -1009,6 +1129,13 @@ export default function App() {
   const [fuliza, setFuliza] = useState(0);
   const [transactions, setTransactions] = useState([]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+  const [compact, setCompact] = useState(false); // the Scan to pay button shrinks to an icon while scrolling
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 120);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [screen]);
 
   const expire = useCallback(() => { setToken(''); setScreen('auth'); notify('Session expired. Enter your PIN to continue.'); }, [notify]);
 
@@ -1091,11 +1218,13 @@ export default function App() {
             <Frequents onAction={notify} />
             <Promo onAction={notify} />
             <Finances onAction={notify} />
-            <section className="panel ent"><h2>Entertainment</h2></section>
+            <Entertainment onAction={notify} />
+            <DoMore onAction={notify} />
           </main>
-          <button className="fab" onClick={() => notify('Opening Scan to Pay')}>
-            <Icon name="scan" size={24} strokeWidth={1.5} /> Scan to pay
+          <button className={`fab ${compact ? 'compact' : ''}`} aria-label="Scan to pay" onClick={() => notify('Opening Scan to Pay')}>
+            <Icon name="scan" size={24} strokeWidth={1.5} /> <span className="fab-t">Scan to pay</span>
           </button>
+          <Assistant onClick={() => notify('Hi! How can I help you today?')} />
         </>
       )}
       <div className={`toast ${toast ? 'show' : ''}`} role="status" aria-live="polite">{toast}</div>
