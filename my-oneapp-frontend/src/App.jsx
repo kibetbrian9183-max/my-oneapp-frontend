@@ -924,7 +924,7 @@ const saveSession = (phone) => {
 };
 
 /* ---------- API ---------- */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://my-oneapp-fhbgq08js-kibet23.vercel.app';
 async function api(path, { method = 'GET', body, token } = {}) {
   let res;
   try {
