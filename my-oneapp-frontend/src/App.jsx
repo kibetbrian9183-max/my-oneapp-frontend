@@ -304,6 +304,19 @@ main > * + * { margin-top: 15px; }
 .fab .fab-t { white-space: nowrap; }
 .fab.compact { width: 47px; padding: 0; justify-content: center; gap: 0; }
 .fab.compact .fab-t { display: none; }
+
+/* Withdraw */
+.seg2.seg3 { grid-template-columns: repeat(3, 1fr); }
+.cta.cont { height: 43px; letter-spacing: .01em; }
+
+/* Lipa na M-PESA */
+.pay-grid.pay-grid3 { grid-template-columns: repeat(3, 1fr); }
+.pay.col { flex-direction: column; height: 78px; gap: 5px; }
+.pay.col > span:not(.tick):not(.s) { text-align: center; }
+.pay.col small { margin-top: 2px; }
+.more-grid.two { grid-template-columns: 1fr 1fr; }
+.more.wide { aspect-ratio: auto; height: 85px; justify-content: center; gap: 8px; }
+.more.wide .round { width: 34px; height: 34px; background: #333; }
 `;
 
 /* ---------- Icons: green line + red accent (.acc), 24px grid ---------- */
@@ -345,6 +358,7 @@ const PATHS = {
   mobile: <><rect x="8" y="3" width="8" height="18" rx="2" /><path className="acc" d="M12 17.5h.01" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c1-4 4-6 8-6s7 2 8 6" /></>,
   sim: <><path d="M7 3h7l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2Z" /><circle className="acc" cx="12" cy="14" r="3.2" /><path className="acc" d="M12 10.8v6.4M8.8 14h6.4" /></>,
+  bill: <><path d="M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6l-7-3Z" /><path className="acc" d="M9 10h6M9 13h6" /></>,
   swoosh: <path d="M3 15c3-6 9-9 18-6-3 6-11 9-18 6Z" fill="currentColor" stroke="none" />,
 };
 
@@ -423,8 +437,7 @@ function Header({ name, onAction }) {
   );
 }
 
-function BalanceCarousel({ balance, fuliza, onAction, onOpen }) {
-  const [hidden, setHidden] = useState(false);
+function BalanceCarousel({ balance, fuliza, hidden, setHidden, onAction, onOpen }) {
   const [index, setIndex] = useState(0);
   const track = useRef(null);
   const onScroll = () => {
@@ -473,7 +486,7 @@ function QuickActions({ onAction, onOpen }) {
       </div>
       <div className="quick-grid">
         {QUICK_ACTIONS.map((a) => (
-          <button key={a.id} className="item" onClick={() => (a.id === 'send' ? onOpen('send') : onAction(a.label.replace('\n', ' ')))}>
+          <button key={a.id} className="item" onClick={() => (['send', 'withdraw', 'lipa'].includes(a.id) ? onOpen(a.id) : onAction(a.label.replace('\n', ' ')))}>
             <span className={`round ${a.pochi ? 'pochi' : 'dark'}`}>
               {a.pochi ? <Icon name="swoosh" size={20} style={{ color: '#e52d45' }} /> : <Icon name={a.icon} size={21} strokeWidth={1.6} />}
             </span>
@@ -603,7 +616,9 @@ function BackHeader({ title, onBack, left = 14 }) {
 
 /* ---------- Confirm ---------- */
 function Confirm({ txn, onName, onBack, onSend }) {
-  const ready = txn.name.trim().length > 0;
+  const isW = txn.kind === 'withdraw';
+  const rows = txn.details ?? (isW ? [['Agent number', txn.agent], ['Store number', txn.store]] : null);
+  const ready = !!rows || txn.name.trim().length > 0;
   return (
     <div className="confirm">
       <BackHeader title="Confirm" onBack={onBack} />
@@ -611,19 +626,25 @@ function Confirm({ txn, onName, onBack, onSend }) {
         <div className="tcard">
           <div className="tcard-in">
             <div className="ring"><Face name={txn.name} size={53} /></div>
-            <p className="t-title">Send money to mobile number</p>
+            <p className="t-title">{txn.title ?? (isW ? 'Withdraw cash from agent' : 'Send money to mobile number')}</p>
             <div className="t-rows">
-              <label className="t-row" style={{ display: 'block' }}>
+              {rows ? (
+                <>
+                  {rows.map(([k, v]) => <div key={k} className="t-row"><small>{k}</small><strong className="num">{v}</strong></div>)}
+                </>
+              ) : (
+                <label className="t-row" style={{ display: 'block' }}>
                 <small>Send to</small>
                 <input value={txn.name} onChange={(e) => onName(e.target.value)} placeholder="Enter recipient name" maxLength={40} autoComplete="name" aria-label="Send to" />
               </label>
+              )}
               <div className="t-row"><small>Amount</small><strong className="num">Ksh {money(txn.amount)}</strong></div>
               <div className="t-row"><small>Transaction cost</small><strong className="num">{txn.fee == null ? 'N/A' : txn.fee === 0 ? 'Free' : `Ksh ${money(txn.fee)}`}</strong></div>
             </div>
           </div>
         </div>
       </div>
-      <button className="cta" disabled={!ready} onClick={onSend}>Send</button>
+      <button className="cta" disabled={!ready} onClick={onSend}>{txn.kind === 'pay' ? 'Pay' : isW ? 'Withdraw' : 'Send'}</button>
     </div>
   );
 }
@@ -710,10 +731,14 @@ function Success({ txn, onClose, onAction }) {
               <p className="ok-cost">Transaction cost:<b>Ksh {money(txn.fee ?? 0)}</b></p>
               <button className="ok-id" onClick={copy} aria-label="Copy transaction ID">ID: {txn.id} <Icon name="copy" size={16} strokeWidth={1.6} /> Copy</button>
               <div className="to-box">
-                Send to:
+                {txn.kind === 'pay' ? 'Paid to:' : txn.kind === 'withdraw' ? 'Withdraw from:' : 'Send to:'}
                 <div className="to-row">
                   <Face name={txn.name} size={36} />
-                  <div><div>{txn.name.trim().toUpperCase()}</div><div className="num">Phone number:{txn.phone}</div></div>
+                  <div>{txn.kind === 'pay'
+                    ? <><div>{txn.toName}</div><div className="num">{txn.toLine}</div></>
+                    : txn.kind === 'withdraw'
+                    ? <><div>AGENT {txn.agent}</div><div className="num">Store number:{txn.store}</div></>
+                    : <><div>{txn.name.trim().toUpperCase()}</div><div className="num">Phone number:{txn.phone}</div></>}</div>
                 </div>
               </div>
             </div>
@@ -755,6 +780,7 @@ function Statements({ transactions, onBack, onAction }) {
   const term = q.trim().toLowerCase();
 
   const rows = transactions.filter((t) =>
+    t.name !== 'Transaction cost' && // cost lines are not listed on the statement
     t.at.getFullYear() === m.getFullYear() && t.at.getMonth() === m.getMonth() &&
     (!term || `${t.name} ${t.masked} ${Math.abs(t.amount)}`.toLowerCase().includes(term)));
   const groups = [];
@@ -1119,6 +1145,204 @@ function Assistant({ onClick }) {
   );
 }
 
+/* ---------- Withdraw money ---------- */
+/* Safaricom 2026 "from M-PESA agent" charges: [highest amount in band, fee]. Below Ksh 50 is not allowed. */
+const AGENT_FEES = [[49, null], [100, 11], [2500, 29], [3500, 52], [5000, 69], [7500, 87], [10000, 115], [15000, 167], [20000, 185], [35000, 197], [50000, 278], [250000, 309]];
+const agentFeeFor = (n) => (AGENT_FEES.find(([max]) => n <= max) ?? [0, null])[1];
+const DIGITS_4_7 = /^\d{4,7}$/;
+
+function Withdraw({ initial, balance, fuliza, onBack, onAction, onContinue }) {
+  const [tab, setTab] = useState('agent');
+  const [agent, setAgent] = useState(initial?.agent ?? '');
+  const [store, setStore] = useState(initial?.store ?? '');
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
+  const amt = Number(amount);
+  const ready = tab === 'agent' && DIGITS_4_7.test(agent) && DIGITS_4_7.test(store) && amt >= 50 && amt <= 250000;
+  const digits = (set, max) => (e) => set(e.target.value.replace(/\D/g, '').slice(0, max));
+
+  const submit = () => {
+    if (!ready) return;
+    const fee = agentFeeFor(amt);
+    if (amt + fee > balance + fuliza) {
+      onAction(`Insufficient funds. You need Ksh ${money(amt + fee)} including the Ksh ${money(fee)} fee`);
+      return;
+    }
+    onContinue({ kind: 'withdraw', method: 'mpesa', agent, store, name: `Agent ${agent}`, amount: amt, fee });
+  };
+
+  return (
+    <div>
+      <BackHeader title="Withdraw money" onBack={onBack} />
+      <div className="sm-body" style={{ paddingBottom: 100 }}>
+        <div className="seg2 seg3" role="tablist">
+          {[['agent', 'At Agent'], ['atm', 'At ATM'], ['ziidi', 'From ZiiDi']].map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+
+        {tab !== 'agent' ? (
+          <p className="empty" style={{ marginTop: 28 }}>Withdrawing {tab === 'atm' ? 'at an ATM' : 'from ZiiDi'} is not available yet. Choose At Agent.</p>
+        ) : (
+          <>
+            <label className="sm-label" htmlFor="agent">Enter agent number</label>
+            <div className="field">
+              <input id="agent" type="text" inputMode="numeric" autoComplete="off" placeholder="Enter agent number" value={agent} onChange={digits(setAgent, 7)} />
+              <button aria-label="Scan agent code" onClick={() => onAction('Scan agent code')}><Icon name="scan" size={24} strokeWidth={1.5} /></button>
+            </div>
+
+            <label className="sm-label" htmlFor="store">Enter store number</label>
+            <div className="field">
+              <input id="store" type="text" inputMode="numeric" autoComplete="off" placeholder="Enter store number" value={store} onChange={digits(setStore, 7)} />
+            </div>
+
+            <label className="sm-label" htmlFor="wamount">Enter Amount</label>
+            <div className="field">
+              <input id="wamount" type="text" inputMode="numeric" placeholder="0" value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 6))} />
+              <span className="suffix">Ksh</span>
+            </div>
+            <p className="hint num">Balance: Ksh {money(balance)} - Fuliza: Ksh {money(fuliza)}</p>
+            {amt > 0 && amt < 50 && <p className="hint err">The minimum withdrawal is Ksh 50</p>}
+            {amt > 250000 && <p className="hint err">The maximum per transaction is Ksh 250,000</p>}
+          </>
+        )}
+      </div>
+      <button className="cta cont" disabled={!ready} onClick={submit}>Continue</button>
+    </div>
+  );
+}
+
+/* ---------- Lipa na M-PESA ---------- */
+const TILL_RE = /^\d{5,7}$/;
+
+function Lipa({ initial, balance, fuliza, hidden, onBack, onAction, onContinue }) {
+  const [tab, setTab] = useState(initial?.type ?? 'till');
+  const [till, setTill] = useState(initial?.till ?? '');
+  const [business, setBusiness] = useState(initial?.business ?? '');
+  const [account, setAccount] = useState(initial?.account ?? '');
+  const [phone, setPhone] = useState(initial?.phoneRaw ?? '');
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
+  const [method, setMethod] = useState(initial?.method ?? 'mpesa');
+  const amt = Number(amount);
+  const targetOk = tab === 'till' ? TILL_RE.test(till)
+    : tab === 'paybill' ? TILL_RE.test(business) && /^[\w-]{1,20}$/.test(account)
+    : PHONE_RE.test(phone.replace(/\s/g, ''));
+  const ready = targetOk && amt >= 1 && amt <= 250000;
+  const stars = (v) => (hidden ? '******' : v);
+  const digits = (set, max) => (e) => set(e.target.value.replace(/\D/g, '').slice(0, max));
+
+  const submit = () => {
+    if (!ready) return;
+    if (method === 'bonga') { onAction('Insufficient Bonga Points'); return; }
+    const fee = method === 'mpesa' ? (tab === 'paybill' ? 0 : feeFor(amt)) : null; // paybill: no customer charge in the table
+    if (method === 'mpesa' && amt + fee > balance + fuliza) {
+      onAction(`Insufficient funds. You need Ksh ${money(amt + fee)} including the Ksh ${money(fee)} fee`);
+      return;
+    }
+    const to = normalizePhone(phone);
+    const target = tab === 'till'
+      ? { title: 'Pay to till number', details: [['Till number', till]], name: `Till ${till}`, toName: `TILL ${till}`, toLine: 'Buy Goods' }
+      : tab === 'paybill'
+      ? { title: 'Pay bill', details: [['Business number', business], ['Account number', account]], name: `Paybill ${business}`, toName: `PAYBILL ${business}`, toLine: `Account number:${account}` }
+      : { title: 'Pay Pochi la Biashara', details: [['Phone number', to]], name: 'Pochi la Biashara', toName: 'POCHI LA BIASHARA', toLine: `Phone number:${to}` };
+    onContinue({ kind: 'pay', type: tab, method, till, business, account, phone: to, phoneRaw: phone, amount: amt, fee, ...target });
+  };
+
+  return (
+    <div>
+      <BackHeader title="Lipa na M-PESA" onBack={onBack} />
+      <div className="sm-body" style={{ paddingBottom: 40 }}>
+        <div className="seg2 seg3" role="tablist">
+          {[['till', 'Buy Goods'], ['paybill', 'Paybill'], ['pochi', 'Pochi la Biashara']].map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+
+        <div className="sm-row">
+          <h2 className="sm-h">Favourites</h2>
+          <button className="sm-link" onClick={() => onAction('All favourites')}>View All</button>
+        </div>
+        <div className="fav">
+          <button className="item" onClick={() => onAction('Add favourite')}>
+            <span className="round"><Icon name="plus" size={20} strokeWidth={2} /></span>
+            <span className="label">Add</span>
+          </button>
+        </div>
+
+        {tab === 'till' && (
+          <>
+            <label className="sm-label" htmlFor="till">Enter till number</label>
+            <div className="field">
+              <input id="till" type="text" inputMode="numeric" autoComplete="off" placeholder="Enter till number" value={till} onChange={digits(setTill, 7)} />
+              <button aria-label="Scan till code" onClick={() => onAction('Scan till code')}><Icon name="scan" size={24} strokeWidth={1.5} /></button>
+            </div>
+          </>
+        )}
+        {tab === 'paybill' && (
+          <>
+            <label className="sm-label" htmlFor="biz">Enter business number</label>
+            <div className="field">
+              <input id="biz" type="text" inputMode="numeric" autoComplete="off" placeholder="Enter business number" value={business} onChange={digits(setBusiness, 7)} />
+              <button aria-label="Scan business code" onClick={() => onAction('Scan business code')}><Icon name="scan" size={24} strokeWidth={1.5} /></button>
+            </div>
+            <label className="sm-label" htmlFor="acct">Enter account number</label>
+            <div className="field">
+              <input id="acct" type="text" autoComplete="off" maxLength={20} placeholder="Enter account number" value={account} onChange={(e) => setAccount(e.target.value.replace(/[^\w-]/g, ''))} />
+            </div>
+          </>
+        )}
+        {tab === 'pochi' && (
+          <>
+            <label className="sm-label" htmlFor="pphone">Enter phone number</label>
+            <div className="field">
+              <input id="pphone" type="tel" inputMode="tel" maxLength={16} placeholder="Enter phone number" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+\s]/g, ''))} />
+              <button aria-label="Choose from contacts" onClick={() => onAction('Contacts')}><Icon name="contact" size={24} strokeWidth={1.8} /></button>
+            </div>
+          </>
+        )}
+
+        <label className="sm-label" htmlFor="lamount" style={{ marginTop: 26 }}>Enter amount</label>
+        <div className="field">
+          <input id="lamount" type="text" inputMode="numeric" placeholder="0" value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 6))} />
+          <span className="suffix">Ksh</span>
+        </div>
+        <p className="hint num" style={{ marginLeft: 14 }}>Balance: Ksh {stars(money(balance))} - Fuliza: {stars(`Ksh ${money(fuliza)}`)}</p>
+        {amt > 250000 && <p className="hint err">The maximum per transaction is Ksh 250,000</p>}
+
+        <h2 className="sm-h" style={{ marginTop: 26 }}>Select Payment Method</h2>
+        <div className="pay-grid pay-grid3" role="radiogroup" aria-label="Payment method">
+          <button role="radio" aria-checked={method === 'mpesa'} className={`pay col ${method === 'mpesa' ? 'sel' : ''}`} onClick={() => setMethod('mpesa')}>
+            <Icon name="swoosh" size={22} style={{ color: '#e52d45' }} />
+            <span><b>M-PESA</b><small className="num">Ksh. {stars(money(balance))}</small></span>
+            {method === 'mpesa' && <span className="tick"><Icon name="check" size={10} /></span>}
+          </button>
+          <button role="radio" aria-checked={method === 'bonga'} className={`pay col ${method === 'bonga' ? 'sel' : ''}`} onClick={() => setMethod('bonga')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#cfcfcf" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M8 4h8M9.5 4c0 2-4.5 3-4.5 8 0 5 3 8 7 8s7-3 7-8c0-5-4.5-6-4.5-8M9 12h.01M12 12h.01M15 12h.01M9 15h.01M12 15h.01M15 15h.01" /></svg>
+            <span><b>Bonga Points</b><small>Ksh. 0</small></span>
+            {method === 'bonga' && <span className="tick"><Icon name="check" size={10} /></span>}
+          </button>
+          <button role="radio" aria-checked={method === 'shiriki'} className={`pay col ${method === 'shiriki' ? 'sel' : ''}`} onClick={() => setMethod('shiriki')}>
+            <span className="s">S</span>
+            <span><b>Shiriki Pay</b><small>Select</small></span>
+            {method === 'shiriki' && <span className="tick"><Icon name="check" size={10} /></span>}
+          </button>
+        </div>
+
+        <button className={`continue ${ready ? 'on' : ''}`} style={{ height: 40, letterSpacing: '.1em' }} disabled={!ready} onClick={submit}>Continue</button>
+
+        <h2 className="sm-h" style={{ marginTop: 28 }}>Do More</h2>
+        <div className="more-grid two">
+          <button className="more wide" onClick={() => onAction('Bill Manager')}>
+            <span className="round"><Icon name="bill" size={19} strokeWidth={1.6} /></span>
+            <span className="label">Bill Manager</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [toast, notify] = useToast();
   const [loginPhone, setLoginPhone] = useState(() => loadSession() ?? '');
@@ -1129,6 +1353,7 @@ export default function App() {
   const [fuliza, setFuliza] = useState(0);
   const [transactions, setTransactions] = useState([]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);
+  const [hideBal, setHideBal] = useState(false); // eye icon on the balance card, also masks balances on Lipa na M-PESA
   const [compact, setCompact] = useState(false); // the Scan to pay button shrinks to an icon while scrolling
   useEffect(() => {
     const onScroll = () => setCompact(window.scrollY > 120);
@@ -1173,9 +1398,15 @@ export default function App() {
 
   const pay = async (pin) => {
     try {
-      const r = await api('/api/transfer', {
+      const isW = txn.kind === 'withdraw';
+      const isPay = txn.kind === 'pay';
+      const r = await api(isW ? '/api/withdraw' : isPay ? '/api/pay' : '/api/transfer', {
         method: 'POST', token,
-        body: { pin, method: txn.method, name: txn.name.trim(), phone: txn.phone, amount: txn.amount },
+        body: isW
+          ? { pin, agent: txn.agent, store: txn.store, amount: txn.amount }
+          : isPay
+          ? { pin, type: txn.type, method: txn.method, till: txn.till, business: txn.business, account: txn.account, phone: txn.phone, amount: txn.amount }
+          : { pin, method: txn.method, name: txn.name.trim(), phone: txn.phone, amount: txn.amount },
       });
       setBalance(r.balance);
       setFuliza(r.fuliza);
@@ -1195,7 +1426,7 @@ export default function App() {
       {screen === 'auth' && <PinScreen login={loginPhone} onAction={notify} onBack={() => setScreen('login')} onSubmit={signIn} />}
       {screen === 'send' && (
         <SendMoney
-          initial={txn}
+          initial={txn && !txn.kind ? txn : null}
           balance={balance}
           fuliza={fuliza}
           onBack={() => setScreen('home')}
@@ -1203,8 +1434,29 @@ export default function App() {
           onContinue={(d) => { setTxn((t) => ({ ...d, name: t?.name ?? '' })); setScreen('confirm'); }}
         />
       )}
+      {screen === 'withdraw' && (
+        <Withdraw
+          initial={txn?.kind === 'withdraw' ? txn : null}
+          balance={balance}
+          fuliza={fuliza}
+          onBack={() => setScreen('home')}
+          onAction={notify}
+          onContinue={(d) => { setTxn(d); setScreen('confirm'); }}
+        />
+      )}
+      {screen === 'lipa' && (
+        <Lipa
+          initial={txn?.kind === 'pay' ? txn : null}
+          balance={balance}
+          fuliza={fuliza}
+          hidden={hideBal}
+          onBack={() => setScreen('home')}
+          onAction={notify}
+          onContinue={(d) => { setTxn(d); setScreen('confirm'); }}
+        />
+      )}
       {screen === 'confirm' && txn && (
-        <Confirm txn={txn} onName={(name) => setTxn((t) => ({ ...t, name }))} onBack={() => setScreen('send')} onSend={() => setScreen('pin')} />
+        <Confirm txn={txn} onName={(name) => setTxn((t) => ({ ...t, name }))} onBack={() => setScreen(txn.kind === 'withdraw' ? 'withdraw' : txn.kind === 'pay' ? 'lipa' : 'send')} onSend={() => setScreen('pin')} />
       )}
       {screen === 'pin' && txn && <PinScreen txn={txn} onAction={notify} onBack={() => setScreen('confirm')} onSubmit={pay} />}
       {screen === 'success' && txn?.at && <Success txn={txn} onAction={notify} onClose={finish} />}
@@ -1213,8 +1465,8 @@ export default function App() {
         <>
           <Header name="Brian" onAction={notify} />
           <main>
-            <BalanceCarousel balance={balance} fuliza={fuliza} onAction={notify} onOpen={setScreen} />
-            <QuickActions onAction={notify} onOpen={setScreen} />
+            <BalanceCarousel balance={balance} fuliza={fuliza} hidden={hideBal} setHidden={setHideBal} onAction={notify} onOpen={setScreen} />
+            <QuickActions onAction={notify} onOpen={(sc) => { setTxn(null); setScreen(sc); }} />
             <Frequents onAction={notify} />
             <Promo onAction={notify} />
             <Finances onAction={notify} />
