@@ -894,7 +894,7 @@ const saveSession = (phone) => {
 };
 
 /* ---------- API ---------- */
-const API_URL = import.meta.env.VITE_API_URL || 'https://my-one-app-backend.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 async function api(path, { method = 'GET', body, token } = {}) {
   let res;
   try {
@@ -1010,20 +1010,37 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   useEffect(() => { window.scrollTo(0, 0); }, [screen]);
 
-  const expire = useCallback(() => { setToken(''); setScreen('auth'); notify('Session expired. Enter your PIN to continue.'); }, [notify]);
+  const expire = useCallback(() => setToken(''), []); // the effect below opens a fresh session
 
-  // Keep balances fresh, including changes made directly in MongoDB.
+  // Open a server session for this phone number (no PIN involved), then keep balances fresh,
+  // including changes made directly in MongoDB.
+  const warned = useRef(false);
+  const live = !['landing', 'login', 'auth'].includes(screen);
   useEffect(() => {
-    if (!token || screen !== 'home') return undefined;
-    const load = () => api('/api/me', { token })
-      .then((u) => { setBalance(u.balance); setFuliza(u.fuliza); })
-      .catch((e) => { if (e.status === 401) expire(); });
+    if (!loginPhone || !live) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        if (!token) {
+          const r = await api('/api/session', { method: 'POST', body: { phone: loginPhone } });
+          if (cancelled) return;
+          setToken(r.token); setBalance(r.user.balance); setFuliza(r.user.fuliza);
+        } else {
+          const u = await api('/api/me', { token });
+          if (!cancelled) { setBalance(u.balance); setFuliza(u.fuliza); }
+        }
+        warned.current = false;
+      } catch (e) {
+        if (e.status === 401) setToken('');
+        else if (!warned.current) { warned.current = true; notify("Can't reach the server. Balances may be out of date."); }
+      }
+    };
     load();
     const timer = setInterval(load, 15000);
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
-  }, [token, screen, expire]);
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, [loginPhone, token, live, notify]);
 
   useEffect(() => {
     if (screen !== 'statements' || !token) return;
@@ -1034,28 +1051,26 @@ export default function App() {
 
   const finish = () => { setTxn(null); setScreen('home'); };
 
-  const signIn = async (pin) => {
-    const r = await api('/api/auth/login', { method: 'POST', body: { phone: loginPhone, pin } });
-    setToken(r.token);
-    setBalance(r.user.balance);
-    setFuliza(r.user.fuliza);
-    saveSession(loginPhone);
-    if (r.created) notify('Account created with this PIN');
-    setScreen('home');
-  };
+  const signIn = async () => { saveSession(loginPhone); setScreen('home'); };
 
-  const pay = async (pin) => {
+  const pay = async () => {
     try {
+      let t = token;
+      if (!t) {
+        const r = await api('/api/session', { method: 'POST', body: { phone: loginPhone } });
+        t = r.token;
+        setToken(t);
+      }
       const r = await api('/api/transfer', {
-        method: 'POST', token,
-        body: { pin, method: txn.method, name: txn.name.trim(), phone: txn.phone, amount: txn.amount },
+        method: 'POST', token: t,
+        body: { method: txn.method, name: txn.name.trim(), phone: txn.phone, amount: txn.amount },
       });
       setBalance(r.balance);
       setFuliza(r.fuliza);
-      setTxn((t) => ({ ...t, id: r.id, at: new Date(r.at), fee: r.fee }));
+      setTxn((x) => ({ ...x, id: r.id, at: new Date(r.at), fee: r.fee }));
       setScreen('success');
     } catch (e) {
-      if (e.status === 401) { expire(); return; }
+      if (e.status === 401) { setToken(''); throw new Error('Please try again.'); }
       throw e;
     }
   };
@@ -1064,7 +1079,7 @@ export default function App() {
     <div className="app">
       <style>{CSS}</style>
       {screen === 'landing' && <Landing onStart={() => setScreen('login')} />}
-      {screen === 'login' && <Login initial={loginPhone} onClose={() => setScreen('landing')} onProceed={(p) => { setLoginPhone(p); setScreen('auth'); }} />}
+      {screen === 'login' && <Login initial={loginPhone} onClose={() => setScreen('landing')} onProceed={(p) => { if (p !== loginPhone) { setToken(''); setBalance(0); setFuliza(0); setTransactions([]); } setLoginPhone(p); setScreen('auth'); }} />}
       {screen === 'auth' && <PinScreen login={loginPhone} onAction={notify} onBack={() => setScreen('login')} onSubmit={signIn} />}
       {screen === 'send' && (
         <SendMoney
