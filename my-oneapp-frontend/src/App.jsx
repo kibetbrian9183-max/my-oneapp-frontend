@@ -317,6 +317,10 @@ main > * + * { margin-top: 15px; }
 .more-grid.two { grid-template-columns: 1fr 1fr; }
 .more.wide { aspect-ratio: auto; height: 85px; justify-content: center; gap: 8px; }
 .more.wide .round { width: 34px; height: 34px; background: #333; }
+
+/* Profile photo */
+.avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.pin-photo { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; background: #2a2a2a; }
 `;
 
 /* ---------- Icons: green line + red accent (.acc), 24px grid ---------- */
@@ -412,12 +416,20 @@ function useToast() {
 }
 
 /* ---------- Sections ---------- */
+/* The signed-in profile. The photo lives at public/avatar.jpg: replace that file to change it. */
+const PROFILE = { name: 'Brian Kibet', photo: '/avatar.jpg' };
+
+function Photo({ className, style }) {
+  return <img className={className} style={style} src={PROFILE.photo} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />;
+}
+
 function Header({ name, onAction }) {
   return (
     <header className="topbar">
       <div className="user">
         <div className="avatar" aria-hidden="true">
           {name[0]}
+          <Photo className="avatar-img" />
           <span className="avatar-badge"><Icon name="chevronDown" size={10} strokeWidth={3} /></span>
         </div>
         <div className="who">
@@ -676,12 +688,13 @@ function PinScreen({ txn, login, onBack, onSubmit, onAction }) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'finger', '0', 'del'];
   return (
     <div className="pin">
-      <BackHeader title="Enter M-PESA PIN" onBack={onBack} left={7} />
+      <BackHeader title={login ? 'Enter your M-PESA PIN' : 'Enter M-PESA PIN'} onBack={onBack} left={7} />
       <div className="pin-top">
         {login ? (
           <>
-            <span className="face plain" style={{ width: 54, height: 54 }}><Icon name="user" size={26} strokeWidth={1.6} /></span>
-            <p className="pin-name num">{maskPhone(login)}</p>
+            <Photo className="pin-photo" />
+            <p className="pin-name" style={{ textTransform: 'none' }}>{PROFILE.name}</p>
+            <p className="pin-amt num">{maskPhone(login)}</p>
             <p className="notice pin-notice"><Icon name="info" size={20} strokeWidth={1.6} />This app will not use any of your data bundles</p>
           </>
         ) : (
